@@ -14,7 +14,6 @@ class List {
 
     explicit Node(): next(nullptr), prev(nullptr), value(T()) {}
     explicit Node(const T& value): next(nullptr), prev(nullptr), value(value) {}
-    //explicit Node(T&& value): next(nullptr), prev(nullptr), value(std::move(value)) {}
   };
 
   Node* head;
@@ -140,6 +139,9 @@ public:
     t_allocator = std::move(other.t_allocator);
     allocator = std::move(other.allocator);
     auto new_head = std::allocator_traits<NAllocator>::allocate(allocator, 1);
+    new_head->next = new_head;
+    new_head->prev = new_head;
+    other.length = 0;
     head = other.head;
     other.head = new_head;
   }
@@ -153,6 +155,20 @@ public:
     propagate_on_container_copy_assignment::value) {
       t_allocator = other.t_allocator;
       allocator = other.allocator;
+    }
+    no_allocator_swap(copy);
+    return *this;
+  }
+
+  List& operator=(List&& other) noexcept {
+    if (this == &other) {
+      return *this;
+    }
+    List copy = std::move(other);
+    if (std::allocator_traits<Allocator>::
+    propagate_on_container_move_assignment::value) {
+      t_allocator = std::move(other.t_allocator);
+      allocator = std::move(other.allocator);
     }
     no_allocator_swap(copy);
     return *this;
@@ -230,7 +246,7 @@ public:
     }
 
     bool operator!=(const iterator_impl& other) const {
-      return it != other.it;
+      return !(*this == other);
     }
   };
 
@@ -393,73 +409,72 @@ public:
     hash_array.resize(1, elements.end());
   }
 
-//  UnorderedMap(const UnorderedMap& other):
-//    hash_function(other.hash_function),
-//    t_alloc(
-//        std::allocator_traits<Allocator>::select_on_container_copy_construction(other.t_alloc)
-//        ),
-//    equal_key(other.equal_key),
-//    current_max_load_factor(other.current_max_load_factor) {
-//    std::cout <<"kdjk" << std::endl;
-//    hash_array.resize(1, elements.end());
-//    for (auto it : other) {
-//      insert(it);
-//    }
-//  }
-//
-//  UnorderedMap(UnorderedMap&& other) noexcept :
-//      hash_array(std::move(other.hash_array)),
-//      hash_function(std::move(other.hash_function)),
-//      t_alloc(std::move(other.t_alloc)),
-//      elements(std::move(other.elements)),
-//      equal_key(std::move(other.equal_key)),
-//      current_max_load_factor(std::move(other.current_max_load_factor))
-//  {}
-//
-//  void clear_list_elements() {
-//    if (elements.empty()) return;
-//    for (iterator it = elements.begin(); it != elements.end(); ++it) {
-//      std::allocator_traits<Allocator>::destroy(t_alloc, &(*it));
-//      std::allocator_traits<Allocator>::deallocate(t_alloc, &(*it), 1);
-//    }
-//    elements.clear();
-//  }
-//
-//  void swap_and_kill(UnorderedMap&& other) {
-//    hash_array = std::move(other.hash_array);
-//    hash_function = std::move(other.hash_function);
-//    clear_list_elements();
-//    elements = std::move(other.elements);
-//    equal_key = std::move(other.equal_key);
-//    current_max_load_factor = std::move(other.current_max_load_factor);
-//  }
-//
-//  UnorderedMap& operator=(const UnorderedMap& other) {
-//    if (this == &other) {
-//      return *this;
-//    }
-//    UnorderedMap copy = other;
-//    if (std::allocator_traits<Allocator>::propagate_on_container_copy_assignment::value) {
-//      t_alloc = other.t_alloc;
-//    }
-//    swap_and_kill(std::move(copy));
-//    return *this;
-//  }
-//
-//  UnorderedMap& operator=(UnorderedMap&& other) noexcept {
-//    if (this == &other) {
-//      return *this;
-//    }
-//    if (std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value) {
-//      t_alloc = std::move(other.t_alloc);
-//    }
-//    swap_and_kill(std::move(other));
-//    return *this;
-//  }
-//
-//  ~UnorderedMap() {
-//    clear_list_elements();
-//  }
+  UnorderedMap(const UnorderedMap& other):
+      hash_function(other.hash_function),
+      t_alloc(
+          std::allocator_traits<Allocator>::select_on_container_copy_construction(other.t_alloc)
+      ),
+      equal_key(other.equal_key),
+      current_max_load_factor(other.current_max_load_factor) {
+    hash_array.resize(1, elements.end());
+    for (auto it : other) {
+      insert(it);
+    }
+  }
+
+  UnorderedMap(UnorderedMap&& other):
+      hash_array(std::move(other.hash_array)),
+      hash_function(std::move(other.hash_function)),
+      t_alloc(std::move(other.t_alloc)),
+      elements(std::move(other.elements)),
+      equal_key(std::move(other.equal_key)),
+      current_max_load_factor(std::move(other.current_max_load_factor))
+  {}
+
+  void clear_list_elements() {
+    if (elements.size() == 0) return;
+    for (iterator it = elements.begin(); it != elements.end(); ++it) {
+      std::allocator_traits<Allocator>::destroy(t_alloc, &(*it));
+      std::allocator_traits<Allocator>::deallocate(t_alloc, &(*it), 1);
+    }
+    elements.clear();
+  }
+
+  void swap_and_kill(UnorderedMap&& other) {
+    hash_array = std::move(other.hash_array);
+    hash_function = std::move(other.hash_function);
+    clear_list_elements();
+    elements = std::move(other.elements);
+    equal_key = std::move(other.equal_key);
+    current_max_load_factor = std::move(other.current_max_load_factor);
+  }
+
+  UnorderedMap& operator=(const UnorderedMap& other) {
+    if (this == &other) {
+      return *this;
+    }
+    UnorderedMap copy = other;
+    if (std::allocator_traits<Allocator>::propagate_on_container_copy_assignment::value) {
+      t_alloc = other.t_alloc;
+    }
+    swap_and_kill(std::move(copy));
+    return *this;
+  }
+
+  UnorderedMap& operator=(UnorderedMap&& other) noexcept {
+    if (this == &other) {
+      return *this;
+    }
+    if (std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value) {
+      t_alloc = std::move(other.t_alloc);
+    }
+    swap_and_kill(std::move(other));
+    return *this;
+  }
+
+  ~UnorderedMap() {
+    clear_list_elements();
+  }
 
   size_t size() const {
     return elements.size();
@@ -498,10 +513,8 @@ public:
   }
 
   void rehash(size_t count) {
-    std::cout << "s" << elements.size();
     hash_array.clear();
     List<NodeType*> copy = std::move(elements);
-    //List<NodeType*> copy = elements;//TODO wrong
     hash_array.resize(count, elements.end());
     for (ListIterator it = copy.begin(); it != copy.end(); ++it) {
       ListIterator& elem = hash_array[get_hash((*it)->first)];
@@ -511,7 +524,6 @@ public:
         elem = elements.insert(elem, *it);
       }
     }
-    std::cout << "f" << elements.size();
   }
 
   template<class... Args>
@@ -562,11 +574,10 @@ public:
     NodeType* mover = std::allocator_traits<Allocator>::allocate(t_alloc, 1);
     std::allocator_traits<Allocator>::construct(t_alloc, mover, std::forward<NodePair>(value));
     if (elem ==  elements.end()) {
-      elem = elements.insert(elements.end(), mover); //TODO can I move here?
+      elem = elements.insert(elements.end(), mover);
     } else {
-      elem = elements.insert(elem, mover); //TODO can I move here?
+      elem = elements.insert(elem, mover);
     }
-    std::cout << elements.size() << std::endl;
     return {elem, true};
   }
 
